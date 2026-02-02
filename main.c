@@ -4,6 +4,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 // globals shared with imagewriter.cpp
@@ -91,26 +92,42 @@ int main(int argc, char * argv[])
 		dpi, paperSize, bannerSize, output, multipageOutput);
 	imagewriter_init(dpi, paperSize, bannerSize, output, multipageOutput);
 
-	for (int index = optind; index < argc; index++) {
-		printf("Parsing %s...\n", argv[index]);
-
-		FILE * file = fopen(argv[index], "rb");
-		if (file == NULL) {
-			perror("Failed to open file");
-			return EXIT_FAILURE;
-		}
+	if (optind == argc - 1 &&
+		strcmp(argv[optind], "-") == 0) {
+		printf("Parsing STDIN...\n");
 
 		int c;
-		while ((c = fgetc(file)) != -1)
+		while ((c = fgetc(stdin)) != -1)
 			imagewriter_loop(c);
 
-		if (! feof(file)) {
-			perror("Error in reading file");
+		if (! feof(stdin)) {
+			perror("Error in reading STDIN");
 			return EXIT_FAILURE;
 		}
 
 		imagewriter_feed();
-		fclose(file);
+	} else {
+		for (int index = optind; index < argc; index++) {
+			printf("Parsing %s...\n", argv[index]);
+
+			FILE * file = fopen(argv[index], "rb");
+			if (file == NULL) {
+				perror("Failed to open file");
+				return EXIT_FAILURE;
+			}
+
+			int c;
+			while ((c = fgetc(file)) != -1)
+				imagewriter_loop(c);
+
+			if (! feof(file)) {
+				perror("Error in reading file");
+				return EXIT_FAILURE;
+			}
+
+			imagewriter_feed();
+			fclose(file);
+		}
 	}
 
 	printf("Closing ImageWriter.\n");
